@@ -23,7 +23,7 @@ func (s *FileWatcherServer) CreateFile(ctx context.Context, req *pb.CreateFileRe
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		_, err = os.Create(filePath)
+		file, err := os.Create(filePath)
 		if err != nil {
 			if _, ok := err.(*os.PathError); ok {
 				log.Println("Error: Given Path is a Directory")
@@ -36,6 +36,7 @@ func (s *FileWatcherServer) CreateFile(ctx context.Context, req *pb.CreateFileRe
 
 			return nil, ErrCannotCreateFile
 		}
+		defer file.Close()
 
 		return &pb.CreateFileResponse{FileCreated: true}, nil
 	}
@@ -61,7 +62,7 @@ func (s *FileWatcherServer) CreateDir(ctx context.Context, req *pb.CreateDirRequ
 	err := os.Mkdir(dirName, 0644)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
-			log.Printf("Error: Directory '%s' Already Exists", dirName)
+			log.Printf("Error: Directory '%s' Already Exists\n", dirName)
 			log.Println("Source: CreateDir()")
 			return nil, ErrDirAlreadyExists
 		}
@@ -81,13 +82,16 @@ func (s *FileWatcherServer) RemoveFileDir(ctx context.Context, req *pb.RemoveFil
 
 	fileDirPath := "uploads\\" + req.FileDirPath
 
-	err := os.RemoveAll(fileDirPath)
+	_, err := os.Stat(fileDirPath)
+	if os.IsNotExist(err) {
+		log.Printf("Error: Specified File/Dir '%s' Doesn't Exists\n", fileDirPath)
+		log.Println("Source: RemoveFileDir()")
+		return nil, ErrFileDirDoesntExists
+	}
+
+	// os.RemoveAll() Doesn't Throws Error if File/Dir DOESN'T EXISTS
+	err = os.RemoveAll(fileDirPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			log.Printf("Error: Specified File/Dir '%s' Doesn't Exists\n", fileDirPath)
-			log.Println("Source: RemoveFileDir()")
-			return nil, ErrFileDirDoesntExists
-		}
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Remove File Named", fileDirPath)
 		return nil, ErrCannotRemoveFileDir
@@ -161,7 +165,8 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 		return nil, ErrGivenPathIsDir
 	}
 
-	file, err := os.OpenFile(filePath, os.O_WRONLY, 0644)
+	// Overwrite File's Content
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			log.Println("Error: Given Path is Directory")
@@ -174,6 +179,7 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 
 		return nil, ErrCannotOpenFile
 	}
+	defer file.Close()
 
 	_, err = file.Write(req.FileContent)
 	if err != nil {
