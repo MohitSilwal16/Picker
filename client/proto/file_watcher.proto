@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "./pb";
+
+service FileWatcher {
+    rpc CreateFile (CreateFileRequest) returns (CreateFileResponse) {}
+    rpc CreateDir (CreateDirRequest) returns (CreateDirResponse) {}
+    rpc WriteFile (WriteFileRequest) returns (WriteFileResponse) {}
+    rpc RemoveFileDir (RemoveFileDirRequest) returns (RemoveFileDirResponse) {}
+    rpc RenameFileDir (RenameFileDirRequest) returns (RenameFileDirResponse) {}
+}
+
+message CreateFileRequest {
+    string filePath = 1;
+}
+
+message CreateFileResponse {
+    bool fileCreated = 1;
+}
+
+message CreateDirRequest {
+    string dirPath = 1;
+}
+
+message CreateDirResponse {
+    bool dirCreated = 1;
+}
+
+message WriteFileRequest {
+    string filePath  = 1;
+    bytes fileContent = 2;
+}
+
+message WriteFileResponse {
+    bool fileWritten = 1;
+}
+
+message RemoveFileDirRequest {
+    string fileDirPath = 1;
+}
+
+message RemoveFileDirResponse {
+    bool fileRemoved = 1;
+}
+
+message RenameFileDirRequest {
+    string oldFileDirName = 1;
+    string newFileDirName = 2;
+}
+
+message RenameFileDirResponse {
+    bool fileRenamed = 1;
+}
