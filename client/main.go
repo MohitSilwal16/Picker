@@ -7,23 +7,32 @@ import (
 	grpcclient "github.com/MohitSilwal16/Picker/client/grpc_client"
 	"github.com/MohitSilwal16/Picker/client/myservice"
 	"github.com/MohitSilwal16/Picker/client/utils"
+	"github.com/joho/godotenv"
 	"golang.org/x/sys/windows/svc"
 )
-
-const SERVICE_ADDRESS = "192.168.65.1:8080" // IP Address if Service is running inside VM
-// const SERVICE_ADDRESS = "localhost:8080"
 
 func main() {
 	utils.ClearScreen()
 
 	isWindowsService, err := svc.IsWindowsService()
 	if err != nil {
-		fmt.Printf("Failed to Determine if Running in an Interactive Session(Shell): %v", err)
+		fmt.Printf("Failed to Determine if Running in an Interactive Session(Shell): %v\n", err)
 		return
 	}
 
-	err = grpcclient.NewGRPCClients(SERVICE_ADDRESS)
+	configPath := utils.GetPathOfConfigFile()
+
+	err = godotenv.Load(configPath)
 	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Load", configPath)
+	}
+	serviceURL := os.Getenv("SERVICE_URL")
+
+	err = grpcclient.NewGRPCClients(serviceURL)
+	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Connect to Server")
 		return
 	}
 

@@ -1,3 +1,3 @@
 # File Picker
 
-A Windows Background Service which shares files without any user interaction
+Windows Background Service for Automated File Sharing

@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/MohitSilwal16/Picker/server/db"
 	"github.com/MohitSilwal16/Picker/server/handler"
 	"github.com/MohitSilwal16/Picker/server/pb"
 	"github.com/MohitSilwal16/Picker/server/utils"
@@ -13,6 +14,15 @@ import (
 )
 
 const BASE_URL = "0.0.0.0:8080"
+
+func init() {
+	err := db.InitMaria()
+	if err != nil {
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Establish Connection with Maria DB")
+		os.Exit(1)
+	}
+}
 
 func main() {
 	utils.ClearScreen()
@@ -27,8 +37,8 @@ func main() {
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(utils.StructuredLoggerInterceptor()),
 	)
-
 	pb.RegisterFileWatcherServer(s, &handler.FileWatcherServer{})
+	pb.RegisterAuthServer(s, &handler.AuthServer{})
 
 	log.Println("Running gPRC Server on", lis.Addr())
 

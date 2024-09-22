@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/MohitSilwal16/Picker/server/db"
+	"github.com/MohitSilwal16/Picker/server/myerrors"
 	"github.com/MohitSilwal16/Picker/server/pb"
 )
 
@@ -17,24 +19,37 @@ func (s *FileWatcherServer) CreateFile(ctx context.Context, req *pb.CreateFileRe
 	// CANNOT CREATE FILE
 	// FILE ALREADY EXISTS
 	// GIVEN PATH IS DIRECTORY
+	// INVALID SESSION TOKEN
 	// INTERNAL SERVER ERROR
 
-	filePath := "uploads\\" + req.FilePath
+	sender, err := db.GetUsernameBySessionToken(req.SessionToken)
+	if err != nil {
+		if err.Error() == "INVALID SESSION TOKEN" {
+			return nil, myerrors.ErrInvalidSessionToken
+		}
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Validate Session Token")
+		log.Println("Source: CreateFile()")
 
-	_, err := os.Stat(filePath)
+		return nil, myerrors.ErrInternalServerError
+	}
+
+	filePath := "uploads\\" + sender + "\\" + req.FilePath
+
+	_, err = os.Stat(filePath)
 	if os.IsNotExist(err) {
 		file, err := os.Create(filePath)
 		if err != nil {
 			if _, ok := err.(*os.PathError); ok {
 				log.Println("Error: Given Path is a Directory")
 				log.Println("Source: CreateFile()")
-				return nil, ErrGivenPathIsDir
+				return nil, myerrors.ErrGivenPathIsDir
 			}
 			log.Println("Error:", err)
 			log.Println("Description: Cannot Create File Named", filePath)
 			log.Println("Source: CreateFile()")
 
-			return nil, ErrCannotCreateFile
+			return nil, myerrors.ErrCannotCreateFile
 		}
 		defer file.Close()
 
@@ -46,30 +61,44 @@ func (s *FileWatcherServer) CreateFile(ctx context.Context, req *pb.CreateFileRe
 		log.Println("Description: Error while checking Stat of", filePath)
 		log.Println("Source: CreateFile()")
 
-		return nil, ErrInternalServer
+		return nil, myerrors.ErrInternalServerError
 	}
 
-	return nil, ErrFileAlreadyExists
+	return nil, myerrors.ErrFileAlreadyExists
 }
 
 func (s *FileWatcherServer) CreateDir(ctx context.Context, req *pb.CreateDirRequest) (*pb.CreateDirResponse, error) {
 	// Errors:
 	// CANNOT CREATE DIRECTORY
 	// DIRECTORY ALREADY EXISTS
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
-	dirName := "uploads\\" + req.DirPath
+	sender, err := db.GetUsernameBySessionToken(req.SessionToken)
+	if err != nil {
+		if err.Error() == "INVALID SESSION TOKEN" {
+			return nil, myerrors.ErrInvalidSessionToken
+		}
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Validate Session Token")
+		log.Println("Source: CreateFile()")
 
-	err := os.Mkdir(dirName, 0644)
+		return nil, myerrors.ErrInternalServerError
+	}
+
+	dirName := "uploads\\" + sender + "\\" + req.DirPath
+
+	err = os.Mkdir(dirName, 0644)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			log.Printf("Error: Directory '%s' Already Exists\n", dirName)
 			log.Println("Source: CreateDir()")
-			return nil, ErrDirAlreadyExists
+			return nil, myerrors.ErrDirAlreadyExists
 		}
 		log.Println("Error:", err)
 		log.Printf("Description: Cannot Create Directory Named '%s'\n", dirName)
 		log.Println("Source: CreateDir()")
-		return nil, ErrCannotCreateDir
+		return nil, myerrors.ErrCannotCreateDir
 	}
 
 	return &pb.CreateDirResponse{DirCreated: true}, nil
@@ -79,14 +108,28 @@ func (s *FileWatcherServer) RemoveFileDir(ctx context.Context, req *pb.RemoveFil
 	// Errors:
 	// CANNOT REMOVE FILE/DIRECTORY
 	// FILE/DIR DOESN'T EXISTS
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
-	fileDirPath := "uploads\\" + req.FileDirPath
+	sender, err := db.GetUsernameBySessionToken(req.SessionToken)
+	if err != nil {
+		if err.Error() == "INVALID SESSION TOKEN" {
+			return nil, myerrors.ErrInvalidSessionToken
+		}
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Validate Session Token")
+		log.Println("Source: CreateFile()")
 
-	_, err := os.Stat(fileDirPath)
+		return nil, myerrors.ErrInternalServerError
+	}
+
+	fileDirPath := "uploads\\" + sender + "\\" + req.FileDirPath
+
+	_, err = os.Stat(fileDirPath)
 	if os.IsNotExist(err) {
 		log.Printf("Error: Specified File/Dir '%s' Doesn't Exists\n", fileDirPath)
 		log.Println("Source: RemoveFileDir()")
-		return nil, ErrFileDirDoesntExists
+		return nil, myerrors.ErrFileDirDoesntExists
 	}
 
 	// os.RemoveAll() Doesn't Throws Error if File/Dir DOESN'T EXISTS
@@ -94,7 +137,7 @@ func (s *FileWatcherServer) RemoveFileDir(ctx context.Context, req *pb.RemoveFil
 	if err != nil {
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Remove File Named", fileDirPath)
-		return nil, ErrCannotRemoveFileDir
+		return nil, myerrors.ErrCannotRemoveFileDir
 	}
 
 	return &pb.RemoveFileDirResponse{FileRemoved: true}, nil
@@ -105,25 +148,39 @@ func (s *FileWatcherServer) RenameFileDir(ctx context.Context, req *pb.RenameFil
 	// CANNOT RENAME FILE/DIRECTORY
 	// OLD FILE DOESN'T EXISTS
 	// NEW FILE ALREADY EXISTS
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
-	oldFileDirName := "uploads\\" + req.OldFileDirName
-	newFileDirName := "uploads\\" + req.NewFileDirName
+	sender, err := db.GetUsernameBySessionToken(req.SessionToken)
+	if err != nil {
+		if err.Error() == "INVALID SESSION TOKEN" {
+			return nil, myerrors.ErrInvalidSessionToken
+		}
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Validate Session Token")
+		log.Println("Source: CreateFile()")
+
+		return nil, myerrors.ErrInternalServerError
+	}
+
+	oldFileDirName := "uploads\\" + sender + "\\" + req.OldFileDirName
+	newFileDirName := "uploads\\" + sender + "\\" + req.NewFileDirName
 
 	doesNewFileDirAlreadyExists := true
 
-	_, err := os.Stat(newFileDirName)
+	_, err = os.Stat(newFileDirName)
 	if os.IsNotExist(err) {
 		doesNewFileDirAlreadyExists = false
 	} else if err != nil {
 		log.Println("Error:", err)
 		log.Printf("Description: Cannot Fetch Info of '%s'\n", newFileDirName)
-		return nil, ErrCannotRenameFileDir
+		return nil, myerrors.ErrCannotRenameFileDir
 	}
 
 	if doesNewFileDirAlreadyExists {
 		log.Printf("Error: New File/Dir '%s' Alredy Exists\n", newFileDirName)
 		log.Println("Source: RenameFileDir()")
-		return nil, ErrNewFileAlreadyExists
+		return nil, myerrors.ErrNewFileAlreadyExists
 	}
 
 	err = os.Rename(oldFileDirName, newFileDirName)
@@ -131,12 +188,12 @@ func (s *FileWatcherServer) RenameFileDir(ctx context.Context, req *pb.RenameFil
 		if os.IsNotExist(err) {
 			log.Printf("Error: Old File/Dir '%s' Doesn't Exists\n", oldFileDirName)
 			log.Println("Source: RenameFileDir()")
-			return nil, ErrOldFileDoesntExists
+			return nil, myerrors.ErrOldFileDoesntExists
 		}
 
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Rename File Named", oldFileDirName)
-		return nil, ErrCannotRenameFileDir
+		return nil, myerrors.ErrCannotRenameFileDir
 	}
 
 	return &pb.RenameFileDirResponse{FileRenamed: true}, nil
@@ -148,21 +205,35 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 	// CANNOT WRITE INTO FILE
 	// FILE DOESN'T EXISTS
 	// GIVEN PATH IS DIRECTORY
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
-	filePath := "uploads\\" + req.FilePath
+	sender, err := db.GetUsernameBySessionToken(req.SessionToken)
+	if err != nil {
+		if err.Error() == "INVALID SESSION TOKEN" {
+			return nil, myerrors.ErrInvalidSessionToken
+		}
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Validate Session Token")
+		log.Println("Source: CreateFile()")
 
-	_, err := os.Stat(filePath)
+		return nil, myerrors.ErrInternalServerError
+	}
+
+	filePath := "uploads\\" + sender + "\\" + req.FilePath
+
+	_, err = os.Stat(filePath)
 	if os.IsNotExist(err) {
 		log.Printf("Error: Given File '%s' Doesn't Exists\n", filePath)
 		log.Println("Source: WriteFile()")
 
-		return nil, ErrFileDoesntExists
+		return nil, myerrors.ErrFileDoesntExists
 	} else if err != nil {
 		log.Println("Error:", err)
 		log.Printf("Description: Cannot Fetch Stats of '%s'\n", filePath)
 		log.Println("Source: WriteFile()")
 
-		return nil, ErrGivenPathIsDir
+		return nil, myerrors.ErrGivenPathIsDir
 	}
 
 	// Overwrite File's Content
@@ -171,13 +242,13 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 		if _, ok := err.(*os.PathError); ok {
 			log.Println("Error: Given Path is Directory")
 			log.Println("Source: WriteFile()")
-			return nil, ErrGivenPathIsDir
+			return nil, myerrors.ErrGivenPathIsDir
 		}
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Open File Named", filePath)
 		log.Println("Source: WriteFile()")
 
-		return nil, ErrCannotOpenFile
+		return nil, myerrors.ErrCannotOpenFile
 	}
 	defer file.Close()
 
@@ -185,7 +256,7 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 	if err != nil {
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Write in", filePath)
-		return nil, ErrCannotWriteIntoFile
+		return nil, myerrors.ErrCannotWriteIntoFile
 	}
 
 	return &pb.WriteFileResponse{FileWritten: true}, nil

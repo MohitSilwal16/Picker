@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "./pb";
+
+service Auth {
+    rpc Register(AuthRequest) returns (AuthResponse) {}
+    rpc Login(AuthRequest) returns (AuthResponse) {}
+    rpc VerifySessionToken(VerifySessionTokenRequest) returns (VerifySessionTokenResponse) {}
+}
+
+message AuthRequest {
+    string name = 1;
+    string pass = 2;
+}
+
+message AuthResponse {
+    string sessionToken = 1;
+}
+
+message VerifySessionTokenRequest {
+    string sessionToken = 1;
+}
+
+message VerifySessionTokenResponse {
+    bool isSessionTokenValid = 1;
+}

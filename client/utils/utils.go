@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -153,4 +154,17 @@ func AreIgnoreFileExtensionsValid(ignoreExtensions string, configPath string) bo
 	}
 
 	return true
+}
+
+func GetPathOfConfigFile() string {
+	execPath, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Get Path of Service Executable using os.Executable()")
+	}
+
+	currDir := filepath.Dir(execPath)
+	configPath := filepath.Join(currDir, "config.env")
+
+	return configPath
 }

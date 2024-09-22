@@ -80,7 +80,7 @@ func InstallService() {
 
 	m, err := mgr.Connect()
 	if err != nil {
-		fmt.Printf("Could not Connect to Service Manager: %v", err)
+		fmt.Printf("Could not Connect to Service Manager: %v\n", err)
 		return
 	}
 	defer m.Disconnect()
@@ -90,12 +90,12 @@ func InstallService() {
 		StartType:   serviceStartType,
 	})
 	if err != nil {
-		fmt.Printf("Could not Create Service: %v", err)
+		fmt.Printf("Could not Create Service: %v\n", err)
 		return
 	}
 	defer s.Close()
 
-	fmt.Printf("Service %s Installed Successfully", s.Name)
+	fmt.Printf("Service %s Installed Successfully\n", s.Name)
 }
 
 func UinstallService() {
@@ -104,31 +104,31 @@ func UinstallService() {
 
 	m, err := mgr.Connect()
 	if err != nil {
-		fmt.Printf("Failed to Connect to Service Manager: %v", err)
+		fmt.Printf("Failed to Connect to Service Manager: %v\n", err)
 		return
 	}
 	defer m.Disconnect()
 
 	s, err := m.OpenService(MY_SERVICE_NAME)
 	if err != nil {
-		fmt.Printf("Service %s Not Found: %v", MY_SERVICE_NAME, err)
+		fmt.Printf("Service %s Not Found: %v\n", MY_SERVICE_NAME, err)
 		return
 	}
 	defer s.Close()
 
 	err = s.Delete()
 	if err != nil {
-		fmt.Printf("Failed to Delete Service: %v", err)
+		fmt.Printf("Failed to Delete Service: %v\n", err)
 		return
 	}
 
-	fmt.Printf("Service %s Uninstalled Successfully", MY_SERVICE_NAME)
+	fmt.Printf("Service %s Uninstalled Successfully\n", MY_SERVICE_NAME)
 }
 
 func StartService() {
 	m, err := mgr.Connect()
 	if err != nil {
-		fmt.Printf("Could not Connect to Service Manager: %v", err)
+		fmt.Printf("Could not Connect to Service Manager: %v\n", err)
 		return
 	}
 
@@ -155,7 +155,7 @@ func StartService() {
 func StopService() {
 	m, err := mgr.Connect()
 	if err != nil {
-		fmt.Printf("Could not Connect to Service Manager: %v", err)
+		fmt.Printf("Could not Connect to Service Manager: %v\n", err)
 		return
 	}
 

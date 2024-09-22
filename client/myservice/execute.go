@@ -3,7 +3,6 @@ package myservice
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/MohitSilwal16/Picker/client/utils"
@@ -18,16 +17,9 @@ func (m *MyService) Execute(args []string, r <-chan svc.ChangeRequest, s chan<- 
 	s <- svc.Status{State: svc.StartPending}
 	s <- svc.Status{State: svc.Running, Accepts: svc.AcceptStop | svc.AcceptShutdown}
 
-	execPath, err := os.Executable()
-	if err != nil {
-		s <- svc.Status{State: svc.StopPending}
-		return false, 0
-	}
+	configPath := utils.GetPathOfConfigFile()
 
-	currDir := filepath.Dir(execPath)
-	configPath := filepath.Join(currDir, "config.env")
-
-	err = godotenv.Load(configPath)
+	err := godotenv.Load(configPath)
 	if err != nil {
 		s <- svc.Status{State: svc.StopPending}
 		return false, 0

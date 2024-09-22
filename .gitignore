@@ -4,5 +4,6 @@ client/config.env
 client/client.exe
 
 server/uploads
+server/.env
 
 test/
