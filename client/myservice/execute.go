@@ -2,46 +2,50 @@ package myservice
 
 import (
 	"log"
-	"os"
 	"strings"
 
 	"github.com/MohitSilwal16/Picker/client/utils"
-	"github.com/joho/godotenv"
 	"github.com/rjeczalik/notify"
+	"github.com/spf13/viper"
 	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 type MyService struct{}
 
 func (m *MyService) Execute(args []string, r <-chan svc.ChangeRequest, s chan<- svc.Status) (bool, uint32) {
+	eventlog.Remove(MY_SERVICE_NAME)
+	elog, err := eventlog.Open(MY_SERVICE_NAME)
+	if err != nil {
+		s <- svc.Status{State: svc.StopPending}
+		return false, 0
+	}
+
+	elog.Info(1, "Service Initializing ...")
 	s <- svc.Status{State: svc.StartPending}
 	s <- svc.Status{State: svc.Running, Accepts: svc.AcceptStop | svc.AcceptShutdown}
 
-	configPath := utils.GetPathOfConfigFile()
+	configFileDir := utils.GetDirOfConfigFile()
+	viper.SetConfigFile(configFileDir)
 
-	err := godotenv.Load(configPath)
+	err = viper.ReadInConfig()
 	if err != nil {
+		elog.Error(1, "Cannot Read Config File: "+err.Error())
 		s <- svc.Status{State: svc.StopPending}
 		return false, 0
 	}
 
-	dirToWatch := os.Getenv("DIR_TO_WATCH_ABSOLUTE_PATH")
-	ignoreExtensions := strings.Split(os.Getenv("IGNORE_EXTENSIONS"), ",")
-	logFilePath := os.Getenv("LOG_FILE_ABSOLUTE_PATH")
+	dirToWatch := viper.GetString("dir_to_watch_absolute_path")
+	ignoreExtensionsString := viper.GetString("ignore_extensions")
 
-	logFile, err := utils.SetUpFileLogging(logFilePath)
-	if err != nil {
-		s <- svc.Status{State: svc.StopPending}
-		return false, 0
-	}
-	defer logFile.Close()
-	log.Println("Initializing Service ...")
+	ignoreExtensions := strings.Split(ignoreExtensionsString, ",")
 
 	c := make(chan notify.EventInfo, 1)
 
 	err = notify.Watch(dirToWatch, c, notify.All)
 	if err != nil {
 		log.Println("Error:", err)
+		elog.Error(1, "Cannot Read Config File: "+err.Error())
 		s <- svc.Status{State: svc.StopPending}
 		return false, 0
 	}

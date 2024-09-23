@@ -6,24 +6,11 @@ import (
 	"time"
 
 	"github.com/MohitSilwal16/Picker/client/pb"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"github.com/MohitSilwal16/Picker/client/utils"
+	"github.com/spf13/viper"
 )
 
 const CONTEXT_TIMEOUT = time.Second * 20
-
-var fileWatcherClient pb.FileWatcherClient
-
-func NewGRPCClients(address string) error {
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return err
-	}
-
-	fileWatcherClient = pb.NewFileWatcherClient(conn)
-
-	return nil
-}
 
 func CreateFileRequest(filePath string) {
 	// Errors:
@@ -36,10 +23,12 @@ func CreateFileRequest(filePath string) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.CreateFile(ctxTimeout, &pb.CreateFileRequest{
-		FilePath: filePath,
+		FilePath:     filePath,
+		SessionToken: viper.GetString("session_token"),
 	})
 	if err != nil {
-		log.Println("Error from Server during CreateFile:", err.Error())
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		log.Println("Error from Server during CreateFile:", trimmedErr)
 	}
 }
 
@@ -52,10 +41,16 @@ func CreateDirRequest(dirPath string) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.CreateDir(ctxTimeout, &pb.CreateDirRequest{
-		DirPath: dirPath,
+		DirPath:      dirPath,
+		SessionToken: viper.GetString("session_token"),
 	})
 	if err != nil {
-		log.Println("Error from Server during CreateDir:", err.Error())
+		if err == context.DeadlineExceeded {
+			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+		}
+
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		log.Println("Error from Server during CreateDir:", trimmedErr)
 	}
 }
 
@@ -68,10 +63,16 @@ func RemoveFileDirRequest(fileDirPath string) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.RemoveFileDir(ctxTimeout, &pb.RemoveFileDirRequest{
-		FileDirPath: fileDirPath,
+		FileDirPath:  fileDirPath,
+		SessionToken: viper.GetString("session_token"),
 	})
 	if err != nil {
-		log.Println("Error from Server during RemoveFileDir:", err.Error())
+		if err == context.DeadlineExceeded {
+			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+		}
+
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		log.Println("Error from Server during RemoveFileDir:", trimmedErr)
 	}
 }
 
@@ -87,9 +88,15 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
 	_, err := fileWatcherClient.RenameFileDir(ctxTimeout, &pb.RenameFileDirRequest{
 		OldFileDirName: oldFileDirPath,
 		NewFileDirName: newFileDirPath,
+		SessionToken:   viper.GetString("session_token"),
 	})
 	if err != nil {
-		log.Println("Error from Server during RenameFileDir:", err.Error())
+		if err == context.DeadlineExceeded {
+			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+		}
+
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		log.Println("Error from Server during RenameFileDir:", trimmedErr)
 	}
 }
 
@@ -104,10 +111,16 @@ func WriteFileRequest(filePath string, fileContent []byte) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.WriteFile(ctxTimeout, &pb.WriteFileRequest{
-		FilePath:    filePath,
-		FileContent: []byte(fileContent),
+		FilePath:     filePath,
+		FileContent:  []byte(fileContent),
+		SessionToken: viper.GetString("session_token"),
 	})
 	if err != nil {
-		log.Println("Error from Server during WriteFile:", err.Error())
+		if err == context.DeadlineExceeded {
+			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+		}
+
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		log.Println("Error from Server during WriteFile:", trimmedErr)
 	}
 }

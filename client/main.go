@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/MohitSilwal16/Picker/client/auth"
 	grpcclient "github.com/MohitSilwal16/Picker/client/grpc_client"
 	"github.com/MohitSilwal16/Picker/client/myservice"
 	"github.com/MohitSilwal16/Picker/client/utils"
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 	"golang.org/x/sys/windows/svc"
 )
 
@@ -20,26 +22,53 @@ func main() {
 		return
 	}
 
-	configPath := utils.GetPathOfConfigFile()
+	configFilePath := utils.GetDirOfConfigFile()
+	viper.SetConfigFile(configFilePath)
 
-	err = godotenv.Load(configPath)
+	err = viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("Error:", err)
-		fmt.Println("Description: Cannot Load", configPath)
+		fmt.Println("Description: Cannot Read Config File")
+		return
 	}
-	serviceURL := os.Getenv("SERVICE_URL")
+
+	serviceURL := viper.GetString("service_url")
+	logFilePath := viper.GetString("log_file_absolute_path")
+	sessionToken := viper.GetString("session_token")
+
+	logFile, err := utils.SetUpFileLogging(logFilePath)
+	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Set Log File")
+		return
+	}
+	defer logFile.Close()
 
 	err = grpcclient.NewGRPCClients(serviceURL)
 	if err != nil {
 		fmt.Println("Error:", err)
 		fmt.Println("Description: Cannot Connect to Server")
+		log.Println("Error from Server:", utils.TrimGrpcErrorMessage(err.Error()))
 		return
 	}
 
 	if isWindowsService {
-		myservice.RunService()
+		isSessionTokenValid := grpcclient.VerifySessionToken(sessionToken)
+		if isSessionTokenValid {
+			myservice.RunService()
+		} else if auth.LoginWithoutInteraction() {
+			myservice.RunService()
+		}
+		log.Println("Auth Unsuccessful, Try Modifying Credentials in", configFilePath)
 		return
 	}
+
+	// If Auth Unsuccessful then exit
+	if !auth.AuthManager() {
+		fmt.Println("AUTH UNSUCCESSFUL")
+		return
+	}
+	fmt.Println("Auth Successful")
 
 	var choice string
 

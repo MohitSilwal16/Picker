@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode"
 )
 
 func ClearScreen() {
@@ -38,6 +39,42 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
+func IsPasswordInFormat(s string) bool {
+	var (
+		hasUpper   = false
+		hasLower   = false
+		hasNumber  = false
+		hasSpecial = false
+	)
+	if len(s) < 8 || len(s) > 20 {
+		return false
+	}
+	for _, char := range s {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsNumber(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+	return hasUpper && hasLower && hasNumber && hasSpecial
+}
+
+func TrimGrpcErrorMessage(errMsg string) string {
+	// Split the error message
+	parts := strings.Split(errMsg, "desc = ")
+	if len(parts) > 1 {
+		// Return the part after "desc = "
+		return parts[1]
+	}
+	// Return the original error message if "desc = " is not found
+	return errMsg
+}
+
 func SetUpFileLogging(logFilePath string) (*os.File, error) {
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -48,6 +85,7 @@ func SetUpFileLogging(logFilePath string) (*os.File, error) {
 	return logFile, nil
 }
 
+// Validations & Checks
 func IsServiceExePathValid(serviceExecutablePath string, configPath string) bool {
 	if serviceExecutablePath == "" {
 		fmt.Println("Service's Executable Path is Empty in", configPath)
@@ -156,7 +194,7 @@ func AreIgnoreFileExtensionsValid(ignoreExtensions string, configPath string) bo
 	return true
 }
 
-func GetPathOfConfigFile() string {
+func GetDirOfConfigFile() string {
 	execPath, err := os.Executable()
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -164,7 +202,7 @@ func GetPathOfConfigFile() string {
 	}
 
 	currDir := filepath.Dir(execPath)
-	configPath := filepath.Join(currDir, "config.env")
+	configPath := filepath.Join(currDir, "config.json")
 
 	return configPath
 }

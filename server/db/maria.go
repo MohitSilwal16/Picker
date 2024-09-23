@@ -23,6 +23,7 @@ var stmtVerifySessionToken *sql.Stmt
 var stmtUpdateSessionToken *sql.Stmt
 var stmtIsUsernameValid *sql.Stmt
 var stmtGetUsernameBySessionToken *sql.Stmt
+var stmtLogout *sql.Stmt
 
 func generateUniqueSessionToken() (string, error) {
 	newSessionToken := utils.TokenGenerator()
@@ -101,6 +102,12 @@ func InitMaria() error {
 	stmtGetUsernameBySessionToken, err = db.Prepare("SELECT UserName FROM users WHERE UserToken = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement to Get Username By Session Token")
+		return err
+	}
+
+	stmtLogout, err = db.Prepare("UPDATE users SET UserToken = '' WHERE UserToken = ?;")
+	if err != nil {
+		log.Println("Error: Failed to Prepare Statement to Log Out")
 		return err
 	}
 
@@ -191,4 +198,21 @@ func GetUsernameBySessionToken(sessionToken string) (string, error) {
 		return username, nil
 	}
 	return "", myerrors.ErrInvalidSessionToken
+}
+
+func Logout(sessionToken string) (bool, error) {
+	res, err := stmtLogout.Exec(sessionToken)
+	if err != nil {
+		return false, err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if rowsAffected >= 1 {
+		return true, nil
+	}
+	return false, nil
 }

@@ -1,6 +1,6 @@
 TODO.txt
 
-client/config.env
+client/config.json
 client/client.exe
 
 server/uploads

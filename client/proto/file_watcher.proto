@@ -13,6 +13,7 @@ service FileWatcher {
 
 message CreateFileRequest {
     string filePath = 1;
+    string sessionToken = 2;
 }
 
 message CreateFileResponse {
@@ -21,6 +22,7 @@ message CreateFileResponse {
 
 message CreateDirRequest {
     string dirPath = 1;
+    string sessionToken = 2;
 }
 
 message CreateDirResponse {
@@ -30,6 +32,7 @@ message CreateDirResponse {
 message WriteFileRequest {
     string filePath  = 1;
     bytes fileContent = 2;
+    string sessionToken = 3;
 }
 
 message WriteFileResponse {
@@ -38,6 +41,7 @@ message WriteFileResponse {
 
 message RemoveFileDirRequest {
     string fileDirPath = 1;
+    string sessionToken = 2;
 }
 
 message RemoveFileDirResponse {
@@ -47,6 +51,7 @@ message RemoveFileDirResponse {
 message RenameFileDirRequest {
     string oldFileDirName = 1;
     string newFileDirName = 2;
+    string sessionToken = 3;
 }
 
 message RenameFileDirResponse {

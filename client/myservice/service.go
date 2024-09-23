@@ -3,10 +3,9 @@ package myservice
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/MohitSilwal16/Picker/client/utils"
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )
@@ -15,31 +14,12 @@ const MY_SERVICE_NAME = "Picker"
 const MY_SERVICE_DESC = "Picker, File Transfer Without User Interaction"
 
 func InstallService() {
-	var configPath string
-	fmt.Println("MAKE SURE 'config.env' & Service Executable're in same directory")
-	fmt.Println("Enter the Absolute Path of Config File(config.env): ")
-	fmt.Scanln(&configPath)
-
-	_, err := os.Stat(configPath)
-	if os.IsNotExist(err) {
-		fmt.Println("File:", configPath, "Doesn't Exists")
-		return
-	} else if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	err = godotenv.Load(configPath)
-	if err != nil {
-		fmt.Println("Error while loading Config.env:", err)
-		return
-	}
-
-	serviceExePath := os.Getenv("SERVICE_EXECUTABLE_ABSOLUTE_PATH")
-	dirToWatch := os.Getenv("DIR_TO_WATCH_ABSOLUTE_PATH")
-	logFilePath := os.Getenv("LOG_FILE_ABSOLUTE_PATH")
-	ignoreExtensions := os.Getenv("IGNORE_EXTENSIONS")
-	serviceStartTypeString := os.Getenv("SERVICE_START_TYPE")
+	configPath := utils.GetDirOfConfigFile()
+	serviceExePath := viper.GetString("service_executable_absolute_path")
+	serviceStartTypeString := viper.GetString("service_start_type")
+	dirToWatch := viper.GetString("dir_to_watch_absolute_path")
+	logFilePath := viper.GetString("log_file_absolute_path")
+	ignoreExtensions := viper.GetString("ignore_extensions")
 
 	isServiceExeValid := utils.IsServiceExePathValid(serviceExePath, configPath)
 	if !isServiceExeValid {

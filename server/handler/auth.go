@@ -94,3 +94,19 @@ func (s *AuthServer) VerifySessionToken(ctx context.Context, req *pb.VerifySessi
 
 	return &pb.VerifySessionTokenResponse{IsSessionTokenValid: isSessionTokenValid}, nil
 }
+
+func (s *AuthServer) Logout(ctx context.Context, req *pb.LogOutRequest) (*pb.LogOutResponse, error) {
+	if req.SessionToken == "" {
+		return &pb.LogOutResponse{IsUserLoggedOut: false}, nil
+	}
+
+	isUserLoggedOut, err := db.Logout(req.SessionToken)
+	if err != nil {
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Log Out User")
+		log.Println("Source: LogOut()")
+
+		return nil, myerrors.ErrInternalServerError
+	}
+	return &pb.LogOutResponse{IsUserLoggedOut: isUserLoggedOut}, nil
+}
