@@ -12,6 +12,7 @@ CREATE TABLE FileUploads(
 	UploadTime DATETIME NOT NULL,
 	UploadMethod VARCHAR(15) CHECK (UploadMethod IN ("CreateFile", "CreateDir", "WriteFile", "RemoveFileDir", "RenameFileDir") ),
 	SenderName VARCHAR(30),
+	DirName VARCHAR(50),
 	FOREIGN KEY (SenderName) REFERENCES Users(UserName)
 );
 
@@ -23,10 +24,13 @@ CREATE TABLE WriteUploads(
 
 CREATE TABLE FileRequests(
 	SenderName VARCHAR(30),
+	DirName VARCHAR(50),
 	ReceiverName VARCHAR(30),
 	LastUploadId INT,
 	LastUploadTime DATETIME,
 	FOREIGN KEY (SenderName) REFERENCES Users(UserName),
 	FOREIGN KEY (ReceiverName) REFERENCES Users(UserName),
-	FOREIGN KEY (LastUploadId) REFERENCES FileUploads(UploadId)
+	FOREIGN KEY (LastUploadId) REFERENCES FileUploads(UploadId),
+	FOREIGN KEY (DirName) REFERENCES FileUploads(DirName)
 );
+

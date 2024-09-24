@@ -81,7 +81,7 @@ func Login(name string, pass string) bool {
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			fmt.Println("REQUEST TIMED OUT")
-			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+			log.Println("Error from Server during Login: REQUEST TIMED OUT")
 			return false
 		}
 
@@ -117,7 +117,7 @@ func VerifySessionToken(sessionToken string) bool {
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+			log.Println("Error from Server during Verify Session Token: REQUEST TIMED OUT")
 			return false
 		}
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
@@ -125,4 +125,30 @@ func VerifySessionToken(sessionToken string) bool {
 		return false
 	}
 	return res.IsSessionTokenValid
+}
+
+func Logout(sessionToken string) bool {
+	// Errors:
+	// INTERNAL SERVER ERROR
+
+	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
+	defer cancelFunc()
+
+	res, err := authClient.Logout(ctxTimeout, &pb.LogOutRequest{
+		SessionToken: sessionToken,
+	})
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Println("Error from Server during Logout: REQUEST TIMED OUT")
+			return false
+		}
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		log.Println("Error from Server during Logout:", trimmedErr)
+		return false
+	}
+
+	viper.Set("session_token", "")
+	viper.WriteConfig()
+
+	return res.IsUserLoggedOut
 }

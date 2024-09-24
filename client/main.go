@@ -58,8 +58,9 @@ func main() {
 			myservice.RunService()
 		} else if auth.LoginWithoutInteraction() {
 			myservice.RunService()
+		} else {
+			log.Println("Auth Unsuccessful, Try Modifying Credentials in", configFilePath)
 		}
-		log.Println("Auth Unsuccessful, Try Modifying Credentials in", configFilePath)
 		return
 	}
 

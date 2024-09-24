@@ -27,22 +27,24 @@ func LoginRegister() bool {
 			for {
 				fmt.Println("\nEnter Username: ")
 				fmt.Scanln(&name)
-				if regexp.MustCompile(`^[a-zA-Z0-9]{5,20}$`).MatchString(name) {
-					break
+				if !regexp.MustCompile(`^[a-zA-Z0-9]{5,20}$`).MatchString(name) {
+					fmt.Println("USERNAME MUST BE B'TWIN 5-20 CHARS & ALPHANUMERIC")
+					fmt.Println("Ex - User123")
+					continue
 				}
-				fmt.Println("USERNAME MUST BE B'TWIN 5-20 CHARS & ALPHANUMERIC")
-				fmt.Println("Ex - User123")
+				break
 			}
 
 			for {
 				fmt.Println("\nEnter Password: ")
 				fmt.Scanln(&pass)
 
-				if utils.IsPasswordInFormat(pass) {
-					break
+				if !utils.IsPasswordInFormat(pass) {
+					fmt.Println("PASSWORD MUST BE B'TWIN 8-20 CHARS, ATLEAST 1 UPPER, LOWER CASE & SPECIAL CHARACTER")
+					fmt.Println("Ex - User123@")
+					continue
 				}
-				fmt.Println("PASSWORD MUST BE B'TWIN 8-20 CHARS, ATLEAST 1 UPPER, LOWER CASE & SPECIAL CHARACTER")
-				fmt.Println("Ex - User123@")
+				break
 			}
 
 			if grpcclient.Register(name, pass) {
@@ -52,22 +54,24 @@ func LoginRegister() bool {
 			for {
 				fmt.Println("\nEnter Username: ")
 				fmt.Scanln(&name)
-				if regexp.MustCompile(`^[a-zA-Z0-9]{5,20}$`).MatchString(name) {
+				if !regexp.MustCompile(`^[a-zA-Z0-9]{5,20}$`).MatchString(name) {
 					fmt.Println("USERNAME MUST BE B'TWIN 5-20 CHARS & ALPHANUMERIC")
 					fmt.Println("Ex - User123")
-					break
+					continue
 				}
+				break
 			}
 
 			for {
 				fmt.Println("\nEnter Password: ")
 				fmt.Scanln(&pass)
 
-				if utils.IsPasswordInFormat(pass) {
+				if !utils.IsPasswordInFormat(pass) {
 					fmt.Println("PASSWORD MUST BE B'TWIN 8-20 CHARS, ATLEAST 1 UPPER, LOWER CASE & SPECIAL CHARACTER")
 					fmt.Println("Ex - User123@")
-					break
+					continue
 				}
+				break
 			}
 
 			if grpcclient.Login(name, pass) {

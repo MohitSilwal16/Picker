@@ -3,6 +3,7 @@ package grpcclient
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"github.com/MohitSilwal16/Picker/client/pb"
@@ -17,6 +18,7 @@ func CreateFileRequest(filePath string) {
 	// CANNOT CREATE FILE
 	// FILE ALREADY EXISTS
 	// GIVEN PATH IS DIRECTORY
+	// INVALID SESSION TOKEN
 	// INTERNAL SERVER ERROR
 
 	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
@@ -29,6 +31,19 @@ func CreateFileRequest(filePath string) {
 	if err != nil {
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
 		log.Println("Error from Server during CreateFile:", trimmedErr)
+
+		if trimmedErr == "INVALID SESSION TOKEN" {
+			username := viper.GetString("username")
+			password := viper.GetString("password")
+
+			isLoginSuccessful := Login(username, password)
+			if isLoginSuccessful {
+				CreateFileRequest(filePath)
+				return
+			}
+			log.Println("Error: Login Without Interaction Failed\nSource: CreateFileRequest")
+			os.Exit(1)
+		}
 	}
 }
 
@@ -36,6 +51,8 @@ func CreateDirRequest(dirPath string) {
 	// Errors:
 	// CANNOT CREATE DIRECTORY
 	// DIRECTORY ALREADY EXISTS
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
 	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
 	defer cancelFunc()
@@ -51,6 +68,19 @@ func CreateDirRequest(dirPath string) {
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
 		log.Println("Error from Server during CreateDir:", trimmedErr)
+
+		if trimmedErr == "INVALID SESSION TOKEN" {
+			username := viper.GetString("username")
+			password := viper.GetString("password")
+
+			isLoginSuccessful := Login(username, password)
+			if isLoginSuccessful {
+				CreateDirRequest(dirPath)
+				return
+			}
+			log.Println("Error: Login Without Interaction Failed\nSource: CreateDirRequest()")
+			os.Exit(1)
+		}
 	}
 }
 
@@ -58,6 +88,8 @@ func RemoveFileDirRequest(fileDirPath string) {
 	// Errors:
 	// CANNOT REMOVE FILE/DIRECTORY
 	// FILE/DIR DOESN'T EXISTS
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
 	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
 	defer cancelFunc()
@@ -73,6 +105,18 @@ func RemoveFileDirRequest(fileDirPath string) {
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
 		log.Println("Error from Server during RemoveFileDir:", trimmedErr)
+		if trimmedErr == "INVALID SESSION TOKEN" {
+			username := viper.GetString("username")
+			password := viper.GetString("password")
+
+			isLoginSuccessful := Login(username, password)
+			if isLoginSuccessful {
+				RemoveFileDirRequest(fileDirPath)
+				return
+			}
+			log.Println("Error: Login Without Interaction Failed\nSource: RemoveFileDirPath()")
+			os.Exit(1)
+		}
 	}
 }
 
@@ -81,6 +125,8 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
 	// CANNOT RENAME FILE/DIRECTORY
 	// OLD FILE DOESN'T EXISTS
 	// NEW FILE ALREADY EXISTS
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
 	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
 	defer cancelFunc()
@@ -97,6 +143,18 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
 		log.Println("Error from Server during RenameFileDir:", trimmedErr)
+		if trimmedErr == "INVALID SESSION TOKEN" {
+			username := viper.GetString("username")
+			password := viper.GetString("password")
+
+			isLoginSuccessful := Login(username, password)
+			if isLoginSuccessful {
+				RenameFileDirRequest(oldFileDirPath, newFileDirPath)
+				return
+			}
+			log.Println("Error: Login Without Interaction Failed\nSource: RenameFileDirRequest()")
+			os.Exit(1)
+		}
 	}
 }
 
@@ -106,6 +164,8 @@ func WriteFileRequest(filePath string, fileContent []byte) {
 	// CANNOT WRITE INTO FILE
 	// FILE DOESN'T EXISTS
 	// GIVEN PATH IS DIRECTORY
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
 
 	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
 	defer cancelFunc()
@@ -122,5 +182,17 @@ func WriteFileRequest(filePath string, fileContent []byte) {
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
 		log.Println("Error from Server during WriteFile:", trimmedErr)
+		if trimmedErr == "INVALID SESSION TOKEN" {
+			username := viper.GetString("username")
+			password := viper.GetString("password")
+
+			isLoginSuccessful := Login(username, password)
+			if isLoginSuccessful {
+				WriteFileRequest(filePath, fileContent)
+				return
+			}
+			log.Println("Error: Login Without Interaction Failed\nSource: WriteFileRequest()")
+			os.Exit(1)
+		}
 	}
 }

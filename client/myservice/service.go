@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	grpcclient "github.com/MohitSilwal16/Picker/client/grpc_client"
 	"github.com/MohitSilwal16/Picker/client/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/windows/svc"
@@ -103,6 +104,9 @@ func UinstallService() {
 	}
 
 	fmt.Printf("Service %s Uninstalled Successfully\n", MY_SERVICE_NAME)
+
+	// Delete Users Session Token from Server when he/she uninstalls Service
+	grpcclient.Logout(viper.GetString("session_token"))
 }
 
 func StartService() {
