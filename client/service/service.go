@@ -1,4 +1,4 @@
-package myservice
+package service
 
 import (
 	"fmt"
@@ -15,12 +15,10 @@ const MY_SERVICE_NAME = "Picker"
 const MY_SERVICE_DESC = "Picker, File Transfer Without User Interaction"
 
 func InstallService() {
-	configPath := utils.GetDirOfConfigFile()
+	configPath := utils.GetPathOfConfigFile()
 	serviceExePath := viper.GetString("service_executable_absolute_path")
 	serviceStartTypeString := viper.GetString("service_start_type")
-	dirToWatch := viper.GetString("dir_to_watch_absolute_path")
 	logFilePath := viper.GetString("log_file_absolute_path")
-	ignoreExtensions := viper.GetString("ignore_extensions")
 
 	isServiceExeValid := utils.IsServiceExePathValid(serviceExePath, configPath)
 	if !isServiceExeValid {
@@ -28,21 +26,9 @@ func InstallService() {
 		return
 	}
 
-	isDirToWatchValid := utils.IsDirToWatchValid(dirToWatch, configPath)
-	if !isDirToWatchValid {
-		fmt.Println("Invalid Configuration of Dir to Watch in", configPath)
-		return
-	}
-
 	isLogFilePathValid := utils.IsLogFilePathValid(logFilePath, configPath)
 	if !isLogFilePathValid {
 		fmt.Println("Invalid Configuration of Log Path in", configPath)
-		return
-	}
-
-	areIgnoreFileExtensionsValid := utils.AreIgnoreFileExtensionsValid(ignoreExtensions, configPath)
-	if !areIgnoreFileExtensionsValid {
-		fmt.Println("Invalid Configuration of Ignore Extensions in", configPath)
 		return
 	}
 
@@ -105,7 +91,7 @@ func UinstallService() {
 
 	fmt.Printf("Service %s Uninstalled Successfully\n", MY_SERVICE_NAME)
 
-	// Delete Users Session Token from Server when he/she uninstalls Service
+	// Delete Users Session Token & Users' Credentials when he/she uninstalls Service
 	grpcclient.Logout(viper.GetString("session_token"))
 }
 

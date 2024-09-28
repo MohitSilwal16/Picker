@@ -4,6 +4,7 @@ package proto;
 option go_package = "./pb";
 
 service FileWatcher {
+    rpc InitDir (InitDirRequest) returns (InitDirResponse) {}
     rpc CreateFile (CreateFileRequest) returns (CreateFileResponse) {}
     rpc CreateDir (CreateDirRequest) returns (CreateDirResponse) {}
     rpc WriteFile (WriteFileRequest) returns (WriteFileResponse) {}
@@ -11,9 +12,20 @@ service FileWatcher {
     rpc RenameFileDir (RenameFileDirRequest) returns (RenameFileDirResponse) {}
 }
 
+message InitDirRequest {
+    string sessionToken = 1;
+    string dirName = 2;
+    bytes existingData = 3;
+}
+
+message InitDirResponse {
+    bool isDirInitialized = 1;
+}
+
 message CreateFileRequest {
     string filePath = 1;
-    string sessionToken = 2;
+    string senderDirName = 2;
+    string sessionToken = 3;
 }
 
 message CreateFileResponse {
@@ -22,7 +34,8 @@ message CreateFileResponse {
 
 message CreateDirRequest {
     string dirPath = 1;
-    string sessionToken = 2;
+    string senderDirName = 2;
+    string sessionToken = 3;
 }
 
 message CreateDirResponse {
@@ -32,7 +45,8 @@ message CreateDirResponse {
 message WriteFileRequest {
     string filePath  = 1;
     bytes fileContent = 2;
-    string sessionToken = 3;
+    string senderDirName = 3;
+    string sessionToken = 4;
 }
 
 message WriteFileResponse {
@@ -41,7 +55,8 @@ message WriteFileResponse {
 
 message RemoveFileDirRequest {
     string fileDirPath = 1;
-    string sessionToken = 2;
+    string senderDirName = 2;
+    string sessionToken = 3;
 }
 
 message RemoveFileDirResponse {
@@ -51,7 +66,8 @@ message RemoveFileDirResponse {
 message RenameFileDirRequest {
     string oldFileDirName = 1;
     string newFileDirName = 2;
-    string sessionToken = 3;
+    string senderDirName = 3;
+    string sessionToken = 4;
 }
 
 message RenameFileDirResponse {

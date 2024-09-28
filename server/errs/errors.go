@@ -1,4 +1,4 @@
-package myerrors
+package errs
 
 import "errors"
 

@@ -148,6 +148,10 @@ func Logout(sessionToken string) bool {
 	}
 
 	viper.Set("session_token", "")
+	viper.Set("username", "")
+	viper.Set("password", "")
+	viper.Set("dirs_to_watch_absolute_path", "")
+	viper.Set("allowed_extensions", "")
 	viper.WriteConfig()
 
 	return res.IsUserLoggedOut

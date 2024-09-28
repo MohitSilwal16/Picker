@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
-	"github.com/MohitSilwal16/Picker/server/myerrors"
+	"github.com/MohitSilwal16/Picker/server/errs"
 	"github.com/MohitSilwal16/Picker/server/pb"
 	"github.com/MohitSilwal16/Picker/server/utils"
 	_ "github.com/go-sql-driver/mysql"
@@ -24,6 +26,7 @@ var stmtUpdateSessionToken *sql.Stmt
 var stmtIsUsernameValid *sql.Stmt
 var stmtGetUsernameBySessionToken *sql.Stmt
 var stmtLogout *sql.Stmt
+var stmtShowTables *sql.Stmt
 
 func generateUniqueSessionToken() (string, error) {
 	newSessionToken := utils.TokenGenerator()
@@ -69,52 +72,58 @@ func InitMaria() error {
 	}
 	log.Println("Connection with Maria DB is Established")
 
-	stmtVerifySessionToken, err = db.Prepare("SELECT 1 FROM users WHERE UserToken = ?;")
+	stmtVerifySessionToken, err = db.Prepare("SELECT 1 FROM user WHERE session_token = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement for SessionToken Validation")
 		return err
 	}
 
-	stmtRegister, err = db.Prepare("INSERT INTO users (UserName, UserPass, UserToken) VALUE (?, ?, ?);")
+	stmtRegister, err = db.Prepare("INSERT INTO user (username, password, session_token) VALUE (?, ?, ?);")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement for User Registration")
 		return err
 	}
 
-	stmtLogin, err = db.Prepare("SELECT 1 FROM users WHERE UserName = ? AND UserPass = ?;")
+	stmtLogin, err = db.Prepare("SELECT 1 FROM user WHERE username = ? AND password = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement for User Login")
 		return err
 	}
 
-	stmtUpdateSessionToken, err = db.Prepare("UPDATE users SET UserToken = ? WHERE UserName = ? AND UserPass = ?;")
+	stmtUpdateSessionToken, err = db.Prepare("UPDATE user SET session_token = ? WHERE username = ? AND password = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement for SessionToken Updation")
 		return err
 	}
 
-	stmtIsUsernameValid, err = db.Prepare("SELECT 1 FROM users WHERE UserName = ?;")
+	stmtIsUsernameValid, err = db.Prepare("SELECT 1 FROM user WHERE username = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement for Username Validation")
 		return err
 	}
 
-	stmtGetUsernameBySessionToken, err = db.Prepare("SELECT UserName FROM users WHERE UserToken = ?;")
+	stmtGetUsernameBySessionToken, err = db.Prepare("SELECT username FROM user WHERE session_token = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement to Get Username By Session Token")
 		return err
 	}
 
-	stmtLogout, err = db.Prepare("UPDATE users SET UserToken = '' WHERE UserToken = ?;")
+	stmtLogout, err = db.Prepare("UPDATE user SET session_token = '' WHERE session_token = ?;")
 	if err != nil {
 		log.Println("Error: Failed to Prepare Statement to Log Out")
+		return err
+	}
+
+	stmtShowTables, err = db.Prepare("SHOW TABLES;")
+	if err != nil {
+		log.Println("Error: Failed to Prepare Statement to Show Tables")
 		return err
 	}
 
 	return nil
 }
 
-// DB Methods
+// Auth
 func IsSessionTokenValid(sessionToken string) (bool, error) {
 	if sessionToken == "" {
 		return false, nil
@@ -138,7 +147,7 @@ func Register(authRequest *pb.AuthRequest) (string, error) {
 	defer rows.Close()
 
 	if rows.Next() {
-		return "", myerrors.ErrUsernameAlreadyUsedError
+		return "", errs.ErrUsernameAlreadyUsedError
 	}
 
 	newSessionToken, err := generateUniqueSessionToken()
@@ -162,7 +171,7 @@ func Login(authRequest *pb.AuthRequest) (string, error) {
 	defer rows.Close()
 
 	if !rows.Next() {
-		return "", myerrors.ErrInvalidCredentials
+		return "", errs.ErrInvalidCredentials
 	}
 
 	newSessionToken, err := generateUniqueSessionToken()
@@ -180,7 +189,7 @@ func Login(authRequest *pb.AuthRequest) (string, error) {
 
 func GetUsernameBySessionToken(sessionToken string) (string, error) {
 	if sessionToken == "" {
-		return "", myerrors.ErrInvalidSessionToken
+		return "", errs.ErrInvalidSessionToken
 	}
 
 	rows, err := stmtGetUsernameBySessionToken.Query(sessionToken)
@@ -197,7 +206,7 @@ func GetUsernameBySessionToken(sessionToken string) (string, error) {
 		}
 		return username, nil
 	}
-	return "", myerrors.ErrInvalidSessionToken
+	return "", errs.ErrInvalidSessionToken
 }
 
 func Logout(sessionToken string) (bool, error) {
@@ -215,4 +224,76 @@ func Logout(sessionToken string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// File Uploads
+func DoesTableExists(tableName string) (bool, error) {
+	rows, err := stmtShowTables.Query()
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	var table string
+	for rows.Next() {
+		err = rows.Scan(&table)
+		if err != nil {
+			return false, err
+		}
+		if table == tableName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func AddUploader(uploader string, dirName string, existingData []byte) error {
+	uploader = strings.ToLower(uploader)
+	dirName = strings.ToLower(dirName)
+	tableName := "uploader_" + uploader + "_" + dirName
+
+	doesTableExists, err := DoesTableExists(tableName)
+	if err != nil {
+		return err
+	}
+
+	if doesTableExists {
+		return errors.New("USER IS ALREADY HOSTING " + dirName + " DIR")
+	}
+
+	query := fmt.Sprintf(`
+		CREATE TABLE %s(
+			upload_id INT PRIMARY KEY AUTO_INCREMENT,
+			upload_method VARCHAR(15) CHECK( upload_method IN 
+			("InitDir", "CreateFile", "CreateDir", "WriteFile", "RenameFileDir", "RemoveFileDir") ),
+			upload_time DATETIME
+		);
+	`, tableName)
+
+	_, err = db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return AddUpload(uploader, dirName, "InitDir")
+}
+
+func AddUpload(uploader string, dirName string, method string) error {
+	uploader = strings.ToLower(uploader)
+	dirName = strings.ToLower(dirName)
+	tableName := "uploader_" + uploader + "_" + dirName
+
+	query := fmt.Sprintf(`
+		INSERT INTO %s (upload_method, upload_time)
+		VALUE
+		( ? , ? );
+	`, tableName)
+
+	curTime := time.Now().Format("2006-01-02 15:04:05")
+
+	_, err := db.Exec(query, method, curTime)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/MohitSilwal16/Picker/client/auth"
 	grpcclient "github.com/MohitSilwal16/Picker/client/grpc_client"
-	"github.com/MohitSilwal16/Picker/client/myservice"
+	"github.com/MohitSilwal16/Picker/client/service"
 	"github.com/MohitSilwal16/Picker/client/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/windows/svc"
@@ -22,13 +22,15 @@ func main() {
 		return
 	}
 
-	configFilePath := utils.GetDirOfConfigFile()
+	configFilePath := utils.GetPathOfConfigFile()
 	viper.SetConfigFile(configFilePath)
 
 	err = viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("Error:", err)
 		fmt.Println("Description: Cannot Read Config File")
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Read Config File")
 		return
 	}
 
@@ -40,6 +42,8 @@ func main() {
 	if err != nil {
 		fmt.Println("Error:", err)
 		fmt.Println("Description: Cannot Set Log File")
+		log.Println("Error:", err)
+		log.Println("Description: Cannot Set Log File")
 		return
 	}
 	defer logFile.Close()
@@ -55,9 +59,9 @@ func main() {
 	if isWindowsService {
 		isSessionTokenValid := grpcclient.VerifySessionToken(sessionToken)
 		if isSessionTokenValid {
-			myservice.RunService()
+			service.RunService()
 		} else if auth.LoginWithoutInteraction() {
-			myservice.RunService()
+			service.RunService()
 		} else {
 			log.Println("Auth Unsuccessful, Try Modifying Credentials in", configFilePath)
 		}
@@ -80,7 +84,9 @@ func main() {
 		fmt.Println("Enter U to Uinstall Service")
 		fmt.Println("Enter S to Start Service")
 		fmt.Println("Enter T to Stop Service")
-		fmt.Println("Enter R to Refresh Requests")
+		fmt.Println("Enter R to Restart Service")
+		fmt.Println("Enter H to Host/Upload New Dir")
+		fmt.Println("Enter F to Fetch/Subscribe New Dir")
 		fmt.Println("Enter Q to Quit")
 
 		fmt.Println("Enter your choice: ")
@@ -91,19 +97,41 @@ func main() {
 		switch choice {
 		case "I":
 			fmt.Println("Installing Service ...")
-			myservice.InstallService()
+			service.InstallService()
 		case "U":
 			fmt.Println("Uinstalling Service ...")
-			myservice.UinstallService()
+			service.UinstallService()
+			os.Exit(0)
 		case "S":
 			fmt.Println("Starting Service ...")
-			myservice.StartService()
+			service.StartService()
 		case "T":
 			fmt.Println("Stopping Service ...")
-			myservice.StopService()
+			service.StopService()
 		case "R":
-			// Refresh Requests to Check Update
-			fmt.Println("Requesting Again to Server ...")
+			// TODO: Restart Service
+			fmt.Println("Restarting Service ...")
+			service.StopService()
+			service.StartService()
+		case "H":
+			var dirToHost, allowedExtensions string
+			fmt.Println("Enter the Dir's Path you want to Host: ")
+			fmt.Scanln(&dirToHost)
+			fmt.Println("Enter Allowed Extensions: ")
+			fmt.Scanln(&allowedExtensions)
+
+			isDirsToWatch_ignoreExtensions_Valid := utils.IsDirsToWatch_IgnoreExtensions_Valid(dirToHost, allowedExtensions)
+			if !isDirsToWatch_ignoreExtensions_Valid {
+				fmt.Println("Invalid Configuration of Dirs to Watch & Ignore Extensions")
+				continue
+			}
+
+			if grpcclient.InitDirRequest(dirToHost, allowedExtensions) {
+				fmt.Println("Restart Service to Affect Changes")
+			}
+
+		case "F":
+			// TODO: Subscribe to Uploader
 		case "Q":
 			fmt.Println("Terminating ...")
 			os.Exit(0)

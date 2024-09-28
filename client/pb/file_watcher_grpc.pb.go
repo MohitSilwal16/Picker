@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
+	FileWatcher_InitDir_FullMethodName       = "/proto.FileWatcher/InitDir"
 	FileWatcher_CreateFile_FullMethodName    = "/proto.FileWatcher/CreateFile"
 	FileWatcher_CreateDir_FullMethodName     = "/proto.FileWatcher/CreateDir"
 	FileWatcher_WriteFile_FullMethodName     = "/proto.FileWatcher/WriteFile"
@@ -30,6 +31,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileWatcherClient interface {
+	InitDir(ctx context.Context, in *InitDirRequest, opts ...grpc.CallOption) (*InitDirResponse, error)
 	CreateFile(ctx context.Context, in *CreateFileRequest, opts ...grpc.CallOption) (*CreateFileResponse, error)
 	CreateDir(ctx context.Context, in *CreateDirRequest, opts ...grpc.CallOption) (*CreateDirResponse, error)
 	WriteFile(ctx context.Context, in *WriteFileRequest, opts ...grpc.CallOption) (*WriteFileResponse, error)
@@ -43,6 +45,16 @@ type fileWatcherClient struct {
 
 func NewFileWatcherClient(cc grpc.ClientConnInterface) FileWatcherClient {
 	return &fileWatcherClient{cc}
+}
+
+func (c *fileWatcherClient) InitDir(ctx context.Context, in *InitDirRequest, opts ...grpc.CallOption) (*InitDirResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InitDirResponse)
+	err := c.cc.Invoke(ctx, FileWatcher_InitDir_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *fileWatcherClient) CreateFile(ctx context.Context, in *CreateFileRequest, opts ...grpc.CallOption) (*CreateFileResponse, error) {
@@ -99,6 +111,7 @@ func (c *fileWatcherClient) RenameFileDir(ctx context.Context, in *RenameFileDir
 // All implementations must embed UnimplementedFileWatcherServer
 // for forward compatibility
 type FileWatcherServer interface {
+	InitDir(context.Context, *InitDirRequest) (*InitDirResponse, error)
 	CreateFile(context.Context, *CreateFileRequest) (*CreateFileResponse, error)
 	CreateDir(context.Context, *CreateDirRequest) (*CreateDirResponse, error)
 	WriteFile(context.Context, *WriteFileRequest) (*WriteFileResponse, error)
@@ -111,6 +124,9 @@ type FileWatcherServer interface {
 type UnimplementedFileWatcherServer struct {
 }
 
+func (UnimplementedFileWatcherServer) InitDir(context.Context, *InitDirRequest) (*InitDirResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitDir not implemented")
+}
 func (UnimplementedFileWatcherServer) CreateFile(context.Context, *CreateFileRequest) (*CreateFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFile not implemented")
 }
@@ -137,6 +153,24 @@ type UnsafeFileWatcherServer interface {
 
 func RegisterFileWatcherServer(s grpc.ServiceRegistrar, srv FileWatcherServer) {
 	s.RegisterService(&FileWatcher_ServiceDesc, srv)
+}
+
+func _FileWatcher_InitDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitDirRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileWatcherServer).InitDir(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileWatcher_InitDir_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileWatcherServer).InitDir(ctx, req.(*InitDirRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _FileWatcher_CreateFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -236,6 +270,10 @@ var FileWatcher_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.FileWatcher",
 	HandlerType: (*FileWatcherServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "InitDir",
+			Handler:    _FileWatcher_InitDir_Handler,
+		},
 		{
 			MethodName: "CreateFile",
 			Handler:    _FileWatcher_CreateFile_Handler,

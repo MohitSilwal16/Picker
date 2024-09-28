@@ -3,11 +3,10 @@ package handler
 import (
 	"context"
 	"log"
-	"os"
 	"regexp"
 
 	"github.com/MohitSilwal16/Picker/server/db"
-	"github.com/MohitSilwal16/Picker/server/myerrors"
+	"github.com/MohitSilwal16/Picker/server/errs"
 	"github.com/MohitSilwal16/Picker/server/pb"
 	"github.com/MohitSilwal16/Picker/server/utils"
 )
@@ -23,28 +22,21 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.AuthRequest) (*pb.Aut
 	// INTERNAL SERVER ERROR
 
 	if !regexp.MustCompile(`^[a-zA-Z0-9]{5,20}$`).MatchString(req.Name) {
-		return nil, myerrors.ErrInvalidUsernameFormat
+		return nil, errs.ErrInvalidUsernameFormat
 	}
 	if !utils.IsPasswordInFormat(req.Pass) {
-		return nil, myerrors.ErrInvalidPasswordFormat
+		return nil, errs.ErrInvalidPasswordFormat
 	}
 
 	sessionToken, err := db.Register(req)
 	if err != nil {
 		if err.Error() == "USERNAME IS ALREADY USED" {
-			return nil, myerrors.ErrUsernameAlreadyUsedError
+			return nil, errs.ErrUsernameAlreadyUsedError
 		}
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Register User")
 		log.Println("Source: Register()")
-		return nil, myerrors.ErrInternalServerError
-	}
-
-	err = os.Mkdir("uploads\\"+req.Name, 0644)
-	if err != nil {
-		log.Println("Error:", err)
-		log.Println("Description: Cannot Create Directory of", req.Name)
-		return nil, myerrors.ErrFailedToInitDir
+		return nil, errs.ErrInternalServerError
 	}
 
 	return &pb.AuthResponse{SessionToken: sessionToken}, nil
@@ -56,20 +48,20 @@ func (s *AuthServer) Login(ctx context.Context, req *pb.AuthRequest) (*pb.AuthRe
 	// INTERNAL SERVER ERROR
 
 	if !regexp.MustCompile(`^[a-zA-Z0-9]{5,20}$`).MatchString(req.Name) {
-		return nil, myerrors.ErrInvalidUsernameFormat
+		return nil, errs.ErrInvalidUsernameFormat
 	} else if !utils.IsPasswordInFormat(req.Pass) {
-		return nil, myerrors.ErrInvalidPasswordFormat
+		return nil, errs.ErrInvalidPasswordFormat
 	}
 
 	sessionToken, err := db.Login(req)
 	if err != nil {
 		if err.Error() == "INVALID CREDENTIALS" {
-			return nil, myerrors.ErrInvalidCredentials
+			return nil, errs.ErrInvalidCredentials
 		}
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Login User")
 		log.Println("Source: Login()")
-		return nil, myerrors.ErrInternalServerError
+		return nil, errs.ErrInternalServerError
 	}
 
 	return &pb.AuthResponse{SessionToken: sessionToken}, nil
@@ -89,7 +81,7 @@ func (s *AuthServer) VerifySessionToken(ctx context.Context, req *pb.VerifySessi
 		log.Println("Description: Cannot Verify Session Token")
 		log.Println("Source: VerifySessionToken()")
 
-		return nil, myerrors.ErrInternalServerError
+		return nil, errs.ErrInternalServerError
 	}
 
 	return &pb.VerifySessionTokenResponse{IsSessionTokenValid: isSessionTokenValid}, nil
@@ -106,7 +98,7 @@ func (s *AuthServer) Logout(ctx context.Context, req *pb.LogOutRequest) (*pb.Log
 		log.Println("Description: Cannot Log Out User")
 		log.Println("Source: LogOut()")
 
-		return nil, myerrors.ErrInternalServerError
+		return nil, errs.ErrInternalServerError
 	}
 	return &pb.LogOutResponse{IsUserLoggedOut: isUserLoggedOut}, nil
 }

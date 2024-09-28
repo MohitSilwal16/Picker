@@ -2,8 +2,10 @@ package grpcclient
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/MohitSilwal16/Picker/client/pb"
@@ -13,7 +15,86 @@ import (
 
 const CONTEXT_TIMEOUT = time.Second * 20
 
-func CreateFileRequest(filePath string) {
+func InitDirRequest(dirName string, allowedExtensions string) bool {
+	// Errors:
+	// USER IS ALREADY HOSTING dir1 DIR
+	// INVALID SESSION TOKEN
+	// INTERNAL SERVER ERROR
+
+	fmt.Println("Initializing Directory into Server")
+
+	ctxTimeout, cancelFunc := context.WithTimeout(context.Background(), CONTEXT_TIMEOUT)
+	defer cancelFunc()
+
+	dirName, err := filepath.Abs(dirName)
+	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Convert Relative Path into Absolute Path")
+		return false
+	}
+
+	err = utils.ZipFile("temp.zip", dirName)
+	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Convery Bytes into Zip")
+		return false
+	}
+
+	data, err := os.ReadFile("temp.zip")
+	if err != nil {
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Failed to Read Zip File")
+		return false
+	}
+
+	_, err = fileWatcherClient.InitDir(ctxTimeout, &pb.InitDirRequest{
+		DirName:      filepath.Base(dirName),
+		ExistingData: data,
+		SessionToken: viper.GetString("session_token"),
+	})
+	if err != nil {
+		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
+		fmt.Println("Error from Server during InitDir:", trimmedErr)
+
+		if trimmedErr == "INVALID SESSION TOKEN" {
+			username := viper.GetString("username")
+			password := viper.GetString("password")
+
+			isLoginSuccessful := Login(username, password)
+			if isLoginSuccessful {
+				InitDirRequest(dirName, allowedExtensions)
+				return false
+			}
+			os.Exit(1)
+		}
+	}
+
+	err = os.Remove("temp.zip")
+	if err != nil {
+		fmt.Println("Cannot delete temp.zip:", err)
+	}
+
+	fmt.Println("Directory Hosting/Upload Initialized")
+
+	updatedDirsToWatch := viper.GetString("dirs_to_watch_absolute_path")
+	updatedAllowedExt := viper.GetString("allowed_extensions")
+
+	if updatedDirsToWatch == "" {
+		updatedDirsToWatch = dirName
+		updatedAllowedExt = allowedExtensions
+	} else {
+		updatedDirsToWatch += ";" + dirName
+		updatedAllowedExt += ";" + allowedExtensions
+	}
+
+	viper.Set("allowed_extensions", updatedAllowedExt)
+	viper.Set("dirs_to_watch_absolute_path", filepath.Join(updatedDirsToWatch, "..."))
+	viper.WriteConfig()
+
+	return true
+}
+
+func CreateFileRequest(filePath string, dirToWatchBasePath string) {
 	// Errors:
 	// CANNOT CREATE FILE
 	// FILE ALREADY EXISTS
@@ -25,8 +106,9 @@ func CreateFileRequest(filePath string) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.CreateFile(ctxTimeout, &pb.CreateFileRequest{
-		FilePath:     filePath,
-		SessionToken: viper.GetString("session_token"),
+		FilePath:      filePath,
+		SessionToken:  viper.GetString("session_token"),
+		SenderDirName: dirToWatchBasePath,
 	})
 	if err != nil {
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
@@ -38,7 +120,7 @@ func CreateFileRequest(filePath string) {
 
 			isLoginSuccessful := Login(username, password)
 			if isLoginSuccessful {
-				CreateFileRequest(filePath)
+				CreateFileRequest(filePath, dirToWatchBasePath)
 				return
 			}
 			log.Println("Error: Login Without Interaction Failed\nSource: CreateFileRequest")
@@ -47,7 +129,7 @@ func CreateFileRequest(filePath string) {
 	}
 }
 
-func CreateDirRequest(dirPath string) {
+func CreateDirRequest(dirPath string, dirToWatchBasePath string) {
 	// Errors:
 	// CANNOT CREATE DIRECTORY
 	// DIRECTORY ALREADY EXISTS
@@ -58,8 +140,9 @@ func CreateDirRequest(dirPath string) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.CreateDir(ctxTimeout, &pb.CreateDirRequest{
-		DirPath:      dirPath,
-		SessionToken: viper.GetString("session_token"),
+		DirPath:       dirPath,
+		SessionToken:  viper.GetString("session_token"),
+		SenderDirName: dirToWatchBasePath,
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
@@ -75,7 +158,7 @@ func CreateDirRequest(dirPath string) {
 
 			isLoginSuccessful := Login(username, password)
 			if isLoginSuccessful {
-				CreateDirRequest(dirPath)
+				CreateDirRequest(dirPath, dirToWatchBasePath)
 				return
 			}
 			log.Println("Error: Login Without Interaction Failed\nSource: CreateDirRequest()")
@@ -84,7 +167,7 @@ func CreateDirRequest(dirPath string) {
 	}
 }
 
-func RemoveFileDirRequest(fileDirPath string) {
+func RemoveFileDirRequest(fileDirPath string, dirToWatchBasePath string) {
 	// Errors:
 	// CANNOT REMOVE FILE/DIRECTORY
 	// FILE/DIR DOESN'T EXISTS
@@ -95,8 +178,9 @@ func RemoveFileDirRequest(fileDirPath string) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.RemoveFileDir(ctxTimeout, &pb.RemoveFileDirRequest{
-		FileDirPath:  fileDirPath,
-		SessionToken: viper.GetString("session_token"),
+		FileDirPath:   fileDirPath,
+		SessionToken:  viper.GetString("session_token"),
+		SenderDirName: dirToWatchBasePath,
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
@@ -111,7 +195,7 @@ func RemoveFileDirRequest(fileDirPath string) {
 
 			isLoginSuccessful := Login(username, password)
 			if isLoginSuccessful {
-				RemoveFileDirRequest(fileDirPath)
+				RemoveFileDirRequest(fileDirPath, dirToWatchBasePath)
 				return
 			}
 			log.Println("Error: Login Without Interaction Failed\nSource: RemoveFileDirPath()")
@@ -120,7 +204,7 @@ func RemoveFileDirRequest(fileDirPath string) {
 	}
 }
 
-func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
+func RenameFileDirRequest(oldFileDirPath, newFileDirPath string, dirToWatchBasePath string) {
 	// Errors:
 	// CANNOT RENAME FILE/DIRECTORY
 	// OLD FILE DOESN'T EXISTS
@@ -135,6 +219,7 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
 		OldFileDirName: oldFileDirPath,
 		NewFileDirName: newFileDirPath,
 		SessionToken:   viper.GetString("session_token"),
+		SenderDirName:  dirToWatchBasePath,
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
@@ -149,7 +234,7 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
 
 			isLoginSuccessful := Login(username, password)
 			if isLoginSuccessful {
-				RenameFileDirRequest(oldFileDirPath, newFileDirPath)
+				RenameFileDirRequest(oldFileDirPath, newFileDirPath, dirToWatchBasePath)
 				return
 			}
 			log.Println("Error: Login Without Interaction Failed\nSource: RenameFileDirRequest()")
@@ -158,7 +243,7 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string) {
 	}
 }
 
-func WriteFileRequest(filePath string, fileContent []byte) {
+func WriteFileRequest(filePath string, fileContent []byte, dirToWatchBasePath string) {
 	// Errors:
 	// CANNOT OPEN FILE
 	// CANNOT WRITE INTO FILE
@@ -171,9 +256,10 @@ func WriteFileRequest(filePath string, fileContent []byte) {
 	defer cancelFunc()
 
 	_, err := fileWatcherClient.WriteFile(ctxTimeout, &pb.WriteFileRequest{
-		FilePath:     filePath,
-		FileContent:  []byte(fileContent),
-		SessionToken: viper.GetString("session_token"),
+		FilePath:      filePath,
+		FileContent:   []byte(fileContent),
+		SessionToken:  viper.GetString("session_token"),
+		SenderDirName: dirToWatchBasePath,
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
@@ -188,7 +274,7 @@ func WriteFileRequest(filePath string, fileContent []byte) {
 
 			isLoginSuccessful := Login(username, password)
 			if isLoginSuccessful {
-				WriteFileRequest(filePath, fileContent)
+				WriteFileRequest(filePath, fileContent, dirToWatchBasePath)
 				return
 			}
 			log.Println("Error: Login Without Interaction Failed\nSource: WriteFileRequest()")

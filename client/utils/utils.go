@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"unicode"
+
+	"github.com/spf13/viper"
 )
 
 func ClearScreen() {
@@ -76,11 +78,29 @@ func TrimGrpcErrorMessage(errMsg string) string {
 }
 
 func SetUpFileLogging(logFilePath string) (*os.File, error) {
+	if logFilePath == "" {
+		logFilePath = filepath.Dir(GetPathOfConfigFile()) + "/picker.log"
+	}
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
+		if os.IsNotExist(err) {
+			_, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE, 0644)
+			if err != nil {
+				fmt.Println("Error:", err)
+				fmt.Println("Description: Error while Creating Log File at the Path Specified")
+				return nil, err
+			}
+			logFilePath = GetPathOfConfigFile() + "/picker.log"
+			viper.Set("log_file_absolute_path", logFilePath)
+			viper.WriteConfig()
+
+			log.SetOutput(logFile)
+			return logFile, nil
+		}
+		fmt.Println("Error:", err)
+		fmt.Println("Description: Cannot Setup Log File")
 		return nil, err
 	}
-
 	log.SetOutput(logFile)
 	return logFile, nil
 }
@@ -116,44 +136,42 @@ func IsServiceExePathValid(serviceExecutablePath string, configPath string) bool
 	return true
 }
 
-func IsDirToWatchValid(dirToWatch string, configPath string) bool {
-	if dirToWatch == "" {
-		fmt.Println("Dir to Watch's Path is Empty in", configPath)
+func IsDirsToWatch_IgnoreExtensions_Valid(dirToWatchString string, ignoreExtensionsString string) bool {
+	dirsToWatch := strings.Split(dirToWatchString, ";")
+	ignoreExtensions := strings.Split(ignoreExtensionsString, ";")
+
+	if len(dirsToWatch) != len(ignoreExtensions) {
+		fmt.Println("Length of Dirs To Watch & Ignore Extensions MUST BE SAME")
 		return false
 	}
 
-	if len(dirToWatch) >= 4 {
-		lastFour := dirToWatch[len(dirToWatch)-4:]
-		if lastFour != "\\..." {
-			fmt.Println("Add '\\\\...' at the end of Dir To Listen in", configPath)
+	for idx := range dirsToWatch {
+		info, err := os.Stat(dirsToWatch[idx])
+		if os.IsNotExist(err) {
+			fmt.Println("Invalid Path of Dir To Watch")
+			return false
+		} else if err != nil {
+			fmt.Println("Error:", err)
+			fmt.Println("Description: Error while Checking the Existance of Dir to Watch")
 			return false
 		}
-	} else {
-		fmt.Println("Invalid Path of Log File in", configPath)
-		return false
-	}
 
-	info, err := os.Stat(dirToWatch)
-	if os.IsNotExist(err) {
-		fmt.Println("Invalid Path of Dir To Watch in", configPath)
-		return false
-	} else if err != nil {
-		fmt.Println("Error:", err)
-		fmt.Println("Description: Error while Checking the Existance of Dir to Watch")
-		return false
-	}
+		if !info.IsDir() {
+			fmt.Println("Dir to Watch MUST BE Directory")
+			return false
+		}
 
-	if !info.IsDir() {
-		fmt.Println("Dir to Watch MUST BE Directory in", configPath)
-		return false
+		if strings.Contains(ignoreExtensions[idx], ".") {
+			fmt.Println("Extensions MUST not have '.'")
+			return false
+		}
 	}
 	return true
 }
 
 func IsLogFilePathValid(logFilePath string, configPath string) bool {
 	if logFilePath == "" {
-		fmt.Println("Log File's Path is Empty in", configPath)
-		return false
+		logFilePath = filepath.Dir(GetPathOfConfigFile()) + "/picker.log"
 	}
 
 	if len(logFilePath) >= 4 {
@@ -176,6 +194,8 @@ func IsLogFilePathValid(logFilePath string, configPath string) bool {
 			fmt.Println("Description: Error while Creating Log File at the Path Specified in", configPath)
 			return false
 		}
+		viper.Set("log_file_absolute_path", logFilePath)
+		viper.WriteConfig()
 		return true
 	} else if err != nil {
 		fmt.Println("Error:", err)
@@ -185,16 +205,7 @@ func IsLogFilePathValid(logFilePath string, configPath string) bool {
 	return true
 }
 
-func AreIgnoreFileExtensionsValid(ignoreExtensions string, configPath string) bool {
-	if strings.Contains(ignoreExtensions, ".") {
-		fmt.Println("Extensions MUST not have '.' in", configPath)
-		return false
-	}
-
-	return true
-}
-
-func GetDirOfConfigFile() string {
+func GetPathOfConfigFile() string {
 	execPath, err := os.Executable()
 	if err != nil {
 		fmt.Println("Error:", err)

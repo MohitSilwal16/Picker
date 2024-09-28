@@ -1,9 +1,10 @@
-package myservice
+package service
 
 import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	grpcclient "github.com/MohitSilwal16/Picker/client/grpc_client"
@@ -13,7 +14,7 @@ import (
 
 var newFileDirPath = ""
 
-func watchChanges(c chan notify.EventInfo, ignoreExtensions []string, dirToWatch string) {
+func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatch string) {
 	log.Println("Watching For Changes ...")
 	for {
 		event := <-c
@@ -21,11 +22,13 @@ func watchChanges(c chan notify.EventInfo, ignoreExtensions []string, dirToWatch
 		temp := strings.Split(event.Path(), ".")
 		if len(temp) == 2 {
 			changed_file_extension := temp[1]
-			if utils.Contains(ignoreExtensions, changed_file_extension) {
+			if !utils.Contains(allowedExtensions, changed_file_extension) {
 				continue
 			}
 		}
 		path := strings.TrimPrefix(event.Path(), dirToWatch)
+		dirToWatchBasePath := filepath.Base(dirToWatch)
+
 		log.Println(event.Event(), ":", path)
 
 		switch event.Event() {
@@ -38,12 +41,12 @@ func watchChanges(c chan notify.EventInfo, ignoreExtensions []string, dirToWatch
 			}
 
 			if info.IsDir() {
-				grpcclient.CreateDirRequest(path)
+				grpcclient.CreateDirRequest(path, dirToWatchBasePath)
 			} else {
-				grpcclient.CreateFileRequest(path)
+				grpcclient.CreateFileRequest(path, dirToWatchBasePath)
 			}
 		case notify.Remove:
-			grpcclient.RemoveFileDirRequest(path)
+			grpcclient.RemoveFileDirRequest(path, dirToWatchBasePath)
 		case notify.Write:
 			file, err := os.OpenFile(event.Path(), os.O_RDONLY, 0644)
 			if err != nil {
@@ -58,13 +61,13 @@ func watchChanges(c chan notify.EventInfo, ignoreExtensions []string, dirToWatch
 				log.Println("Description: Error Reading File", event.Path())
 			}
 
-			grpcclient.WriteFileRequest(path, data)
+			grpcclient.WriteFileRequest(path, data, dirToWatchBasePath)
 			file.Close()
 		case notify.Rename:
 			if newFileDirPath == "" {
 				newFileDirPath = path
 			} else {
-				grpcclient.RenameFileDirRequest(path, newFileDirPath)
+				grpcclient.RenameFileDirRequest(path, newFileDirPath, dirToWatchBasePath)
 				newFileDirPath = ""
 			}
 		}
