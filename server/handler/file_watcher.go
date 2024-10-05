@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/MohitSilwal16/Picker/server/db"
 	"github.com/MohitSilwal16/Picker/server/errs"
@@ -86,11 +87,10 @@ func (s *FileWatcherServer) InitDir(ctx context.Context, req *pb.InitDirRequest)
 	// Delete temp zip file
 	// We need to close else we won't be able to delete since we marked to use this zip file above
 	initDirZip.Close()
-	err = os.RemoveAll(zipPath)
+	err = os.Remove(zipPath)
 	if err != nil {
 		log.Println("Error:", err)
 		log.Println("Description: Cannot Delete Zip File after Failing to Unzip File\nSource: InitDir()")
-		return &pb.InitDirResponse{IsDirInitialized: true}, nil
 	}
 	return &pb.InitDirResponse{IsDirInitialized: true}, nil
 }
@@ -286,7 +286,6 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 	// Errors:
 	// CANNOT OPEN FILE
 	// CANNOT WRITE INTO FILE
-	// FILE DOESN'T EXISTS
 	// GIVEN PATH IS DIRECTORY
 	// INVALID SESSION TOKEN
 	// INTERNAL SERVER ERROR
@@ -303,24 +302,11 @@ func (s *FileWatcherServer) WriteFile(ctx context.Context, req *pb.WriteFileRequ
 		return nil, errs.ErrInternalServerError
 	}
 
-	filePath := "uploads/" + sender + "/" + req.SenderDirName + "/" + req.FilePath
+	filePath := filepath.Join("uploads", sender, req.SenderDirName, req.FilePath)
 
-	_, err = os.Stat(filePath)
-	if os.IsNotExist(err) {
-		log.Printf("Error: Given File '%s' Doesn't Exists\n", filePath)
-		log.Println("Source: WriteFile()")
-
-		return nil, errs.ErrFileDoesntExists
-	} else if err != nil {
-		log.Println("Error:", err)
-		log.Printf("Description: Cannot Fetch Stats of '%s'\n", filePath)
-		log.Println("Source: WriteFile()")
-
-		return nil, errs.ErrGivenPathIsDir
-	}
-
+	// Also Create File if doesn't Exists
 	// Overwrite File's Content
-	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE, 0644)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			log.Println("Error: Given Path is Directory")

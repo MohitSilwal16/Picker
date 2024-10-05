@@ -19,7 +19,7 @@ var newFileDirPath = ""
 // 1st time it's triggered with file/dir name as New Name
 // 2nd time it's triggered with file/dir name as Old Name
 func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatchAbsPath string) {
-	log.Println("Watching For Changes ...")
+	log.Println("Watching For Changes in", dirToWatchAbsPath, "...")
 	for {
 		event := <-c
 
@@ -95,16 +95,20 @@ func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatc
 					if len(new_file_name_extension) == 2 {
 						new_file_extension := new_file_name_extension[1]
 						if !utils.Contains(allowedExtensions, new_file_extension) {
-							log.Println("Debug:", old_file_name_extension, new_file_name_extension, "Ignored")
-							log.Println("New File/Dir Path:", newFileDirPath)
 							newFileDirPath = ""
 							continue
 						}
 					}
-					log.Println("Debug:", old_file_name_extension, new_file_name_extension, "New File Creation Request")
-					log.Println("New File/Dir Path:", newFileDirPath)
 					// If the New file's Extension is allowed then, Create File & Write
-					createFileDirAndWrite(newFileDirPath, dirToWatchBasePath, dirToWatchAbsPath)
+					success := createFileDirAndWrite(newFileDirPath, dirToWatchBasePath, dirToWatchAbsPath)
+
+					// If Failure then try changing order
+					// Cuz notify.Rename is called twice, 1st for new file & 2nd for old file
+					if !success {
+						log.Println("Order Changed of notify.Rename")
+						createFileDirAndWrite(path, dirToWatchBasePath, dirToWatchAbsPath)
+					}
+
 					newFileDirPath = ""
 					continue
 				}
@@ -113,43 +117,50 @@ func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatc
 			newFileDirPath = strings.TrimPrefix(newFileDirPath, dirToWatchAbsPath)
 			grpcclient.RenameFileDirRequest(path, newFileDirPath, dirToWatchBasePath)
 			newFileDirPath = ""
+		default:
+			log.Printf("Unknown Event: %#v\n", event)
 		}
 	}
 }
 
-func createFileDirAndWrite(path string, dirToWatchBasePath string, dirToWatchAbsPath string) {
-	info, err := os.Stat(path)
+func createFileDirAndWrite(absPathNewFile string, dirToWatchBasePath string, dirToWatchAbsPath string) bool {
+	info, err := os.Stat(absPathNewFile)
 	if err != nil {
 		log.Println("Error:", err)
-		log.Println("Description: Error while checking Stat of", path)
-		return
+		log.Println("Description: Error while checking Stat of", absPathNewFile)
+		return false
 	}
 
 	if info.IsDir() {
-		grpcclient.CreateDirRequest(path, dirToWatchBasePath)
-		return
+		grpcclient.CreateDirRequest(absPathNewFile, dirToWatchBasePath)
+		return false
 	}
-	basePath, err := filepath.Rel(dirToWatchAbsPath, path)
+	basePathNewFile, err := filepath.Rel(dirToWatchAbsPath, absPathNewFile)
 	if err != nil {
 		log.Println("Error:", err)
 		log.Println("Description: Error while getting Relative Path")
+		return false
 	}
-	log.Println("Base Path:", basePath)
 
-	grpcclient.CreateFileRequest(basePath, dirToWatchBasePath)
-	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	isFileCreated := grpcclient.CreateFileRequest(basePathNewFile, dirToWatchBasePath)
+	file, err := os.OpenFile(absPathNewFile, os.O_RDONLY, 0644)
 	if err != nil {
 		log.Println("Error:", err)
-		log.Println("Description: Error while Opening", path)
-		return
+		log.Println("Description: Error while Opening", absPathNewFile)
+		return false
 	}
 	defer file.Close()
+
+	if !isFileCreated {
+		return false
+	}
 
 	data, err := io.ReadAll(file)
 	if err != nil {
 		log.Println("Error:", err)
-		log.Println("Description: Error Reading File", path)
-		return
+		log.Println("Description: Error Reading File", absPathNewFile)
+		return false
 	}
-	grpcclient.WriteFileRequest(basePath, data, dirToWatchBasePath)
+	grpcclient.WriteFileRequest(basePathNewFile, data, dirToWatchBasePath)
+	return true
 }

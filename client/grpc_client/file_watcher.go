@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/MohitSilwal16/Picker/client/pb"
@@ -33,10 +34,12 @@ func InitDirRequest(dirName string, allowedExtensions string) bool {
 		return false
 	}
 
-	err = utils.ZipFile("temp.zip", dirName)
+	allowedExtensionsSlice := strings.Split(allowedExtensions, ",")
+
+	err = utils.ZipFile("temp.zip", dirName, allowedExtensionsSlice)
 	if err != nil {
 		fmt.Println("Error:", err)
-		fmt.Println("Description: Cannot Convery Bytes into Zip")
+		fmt.Println("Description: Cannot Convert Dir into Zip")
 		return false
 	}
 
@@ -94,7 +97,7 @@ func InitDirRequest(dirName string, allowedExtensions string) bool {
 	return true
 }
 
-func CreateFileRequest(filePath string, dirToWatchBasePath string) {
+func CreateFileRequest(filePath string, dirToWatchBasePath string) bool {
 	// Errors:
 	// CANNOT CREATE FILE
 	// FILE ALREADY EXISTS
@@ -111,6 +114,11 @@ func CreateFileRequest(filePath string, dirToWatchBasePath string) {
 		SenderDirName: dirToWatchBasePath,
 	})
 	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Println("Error from Server during File Creation: REQUEST TIMED OUT")
+			return false
+		}
+
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
 		log.Println("Error from Server during CreateFile:", trimmedErr)
 
@@ -120,13 +128,14 @@ func CreateFileRequest(filePath string, dirToWatchBasePath string) {
 
 			isLoginSuccessful := Login(username, password)
 			if isLoginSuccessful {
-				CreateFileRequest(filePath, dirToWatchBasePath)
-				return
+				return CreateFileRequest(filePath, dirToWatchBasePath)
 			}
 			log.Println("Error: Login Without Interaction Failed\nSource: CreateFileRequest")
 			os.Exit(1)
 		}
+		return false
 	}
+	return true
 }
 
 func CreateDirRequest(dirPath string, dirToWatchBasePath string) {
@@ -146,7 +155,8 @@ func CreateDirRequest(dirPath string, dirToWatchBasePath string) {
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+			log.Println("Error from Server during Dir Creation: REQUEST TIMED OUT")
+			return
 		}
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
@@ -184,7 +194,8 @@ func RemoveFileDirRequest(fileDirPath string, dirToWatchBasePath string) {
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+			log.Println("Error from Server during Deletion of File/Dir: REQUEST TIMED OUT")
+			return
 		}
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
@@ -223,7 +234,8 @@ func RenameFileDirRequest(oldFileDirPath, newFileDirPath string, dirToWatchBaseP
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+			log.Println("Error from Server while Renaming File/Dir: REQUEST TIMED OUT")
+			return
 		}
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())
@@ -263,7 +275,8 @@ func WriteFileRequest(filePath string, fileContent []byte, dirToWatchBasePath st
 	})
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Println("Error from Server during Register: REQUEST TIMED OUT")
+			log.Println("Error from Server while Writing in File: REQUEST TIMED OUT")
+			return
 		}
 
 		trimmedErr := utils.TrimGrpcErrorMessage(err.Error())

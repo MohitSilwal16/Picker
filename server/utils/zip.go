@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func zipFileRecursively(zipWriter *zip.Writer, dir string, absInpPath string, num int) error {
+func zipFileRecursively(zipWriter *zip.Writer, dir string, absInpPath string, allowed_extensions []string) error {
 	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -33,46 +33,54 @@ func zipFileRecursively(zipWriter *zip.Writer, dir string, absInpPath string, nu
 		fullPath := filepath.Join(dir, dirEntry.Name())
 
 		if dirEntry.IsDir() {
-			err = zipFileRecursively(zipWriter, dir+"/"+dirEntry.Name(), absInpPath, num+1)
+			err = zipFileRecursively(zipWriter, dir+"/"+dirEntry.Name(), absInpPath, allowed_extensions)
 			if err != nil {
 				return err
 			}
-		} else {
-			file, err := os.Open(dir + "/" + dirEntry.Name())
-			if err != nil {
-				return err
-			}
+			continue
+		}
+		file_name_extension := strings.Split(dirEntry.Name(), ".")
 
-			fileInfo, err := os.Stat(dir + "/" + dirEntry.Name())
-			if err != nil {
-				return err
+		if len(file_name_extension) == 2 {
+			if !Contains(allowed_extensions, file_name_extension[1]) {
+				continue
 			}
+		}
 
-			header, err := zip.FileInfoHeader(fileInfo)
-			if err != nil {
-				return err
-			}
+		file, err := os.Open(dir + "/" + dirEntry.Name())
+		if err != nil {
+			return err
+		}
 
-			header.Name, err = filepath.Rel(absInpPath, fullPath)
-			if err != nil {
-				return err
-			}
+		fileInfo, err := os.Stat(dir + "/" + dirEntry.Name())
+		if err != nil {
+			return err
+		}
 
-			writer, err := zipWriter.CreateHeader(header)
-			if err != nil {
-				return err
-			}
+		header, err := zip.FileInfoHeader(fileInfo)
+		if err != nil {
+			return err
+		}
 
-			_, err = io.Copy(writer, file)
-			if err != nil {
-				return err
-			}
+		header.Name, err = filepath.Rel(absInpPath, fullPath)
+		if err != nil {
+			return err
+		}
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(writer, file)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func ZipFile(zipName, dirName string) error {
+func ZipFile(zipName, dirName string, allowed_extensions []string) error {
 	zipFile, err := os.Create(zipName)
 	if err != nil {
 		return err
@@ -82,7 +90,7 @@ func ZipFile(zipName, dirName string) error {
 	zipWriter := zip.NewWriter(zipFile)
 	defer zipWriter.Close()
 
-	return zipFileRecursively(zipWriter, dirName, dirName, 0)
+	return zipFileRecursively(zipWriter, dirName, dirName, allowed_extensions)
 }
 
 func UnZipFile(zipPath string, outputDir string) error {
