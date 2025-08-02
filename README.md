@@ -1,3 +1,3 @@
 # File Picker
 
-Windows Background Service for Automated File Sharing
+Windows Background Service for Automated & Real-Time File Sharing
