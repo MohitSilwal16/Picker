@@ -29,8 +29,6 @@ func main() {
 	if err != nil {
 		fmt.Println("Error:", err)
 		fmt.Println("Description: Cannot Read Config File")
-		log.Println("Error:", err)
-		log.Println("Description: Cannot Read Config File")
 		return
 	}
 

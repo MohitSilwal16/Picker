@@ -18,6 +18,7 @@ var newFileDirPath = ""
 // Rename Event is triggered twice
 // 1st time it's triggered with file/dir name as New Name
 // 2nd time it's triggered with file/dir name as Old Name
+// It can be vice-versa as well
 func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatchAbsPath string) {
 	log.Println("Watching For Changes in", dirToWatchAbsPath, "...")
 	for {
@@ -26,7 +27,7 @@ func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatc
 		old_file_name_extension := strings.Split(event.Path(), ".")
 		if len(old_file_name_extension) == 2 {
 			changed_file_extension := old_file_name_extension[1]
-			if event.Event() != notify.Rename && !utils.Contains(allowedExtensions, changed_file_extension) {
+			if event.Event() != notify.Rename && !utils.Contains(allowedExtensions, changed_file_extension) && len(allowedExtensions) != 0 {
 				continue
 			}
 		}
@@ -106,7 +107,7 @@ func watchChanges(c chan notify.EventInfo, allowedExtensions []string, dirToWatc
 					// Cuz notify.Rename is called twice, 1st for new file & 2nd for old file
 					if !success {
 						log.Println("Order Changed of notify.Rename")
-						createFileDirAndWrite(path, dirToWatchBasePath, dirToWatchAbsPath)
+						createFileDirAndWrite(event.Path(), dirToWatchBasePath, dirToWatchAbsPath)
 					}
 
 					newFileDirPath = ""

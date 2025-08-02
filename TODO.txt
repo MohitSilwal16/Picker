@@ -1,0 +1,47 @@
+Error Fixes:
+
+Bug Fixes:
+     Copy Files doesn't works Recursively
+
+     Re-Test Renaming of File, ig the problem is that Rename event was triggered twice,
+     1st with new file name & then with old file name
+     Maybe the order is not same always
+
+     If Allowed Extensions're empty then, allow every extension
+
+     Expect Extensions like file_abc.i.j from user as well & here '.j' MUST be interpretted as the extension of this file
+
+     Can't Change the name of file after creating, ig the file hasn't marked as close
+     Ig it's cuz the resources're not released after zipping file/dir
+
+     After Setting Details in config.json, refresh that file cuz despite it's initialized,
+     the old data is loaded into Memory (Maybe Fixed)
+
+------------------------------------------
+
+Additional Features:
+     Check what happens when I move or cut or copy file into, from "Target Directory" 
+     Cut works but Copy doesn't
+
+     Uploader can have multiple dirs to watch & so does receiver has multiple dirs to listen
+     While uploading files, if there were any errors or inconsistency then uploader must zip the whole dir & resend it
+
+------------------------------------------
+
+Main Features:
+     Create Server which listen to client requests for uploading file & requesting file
+     Create Receivers Service
+     Receivers should request server periodically request for file changes every 30 mins
+     Update changes on receiver's end
+     Auth
+
+-----------------------------------------
+Maybe Solved:
+     Can't Perform Operations on Existing File/Dir when Program is Running(Not Service)
+     It's only happens when we Zip File or Init Dir
+
+
+------------------------------------------
+
+Solved:
+     While Copying, Create File is Called After Write File => It's the problem of the way OS is handling these events
