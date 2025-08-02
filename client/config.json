@@ -1,0 +1,8 @@
+{
+    "_comment":"MAKE SURE THIS CONFIG FILE AND SERVICE EXECUTABLE ARE IN SAME DIRECTORY",
+    "service_url":"192.168.65.1:8080",
+    "service_executable_absolute_path":"C:\\Users\\Moi\\Downloads\\client.exe",
+    "log_file_absolute_path":"C:\\Users\\Moi\\Downloads\\Picker\\picker.log",
+    "service_start_type":"StartManual",
+    "allowed_extensions":"exe,env;exe"
+}
